@@ -13,3 +13,4 @@ unidecode
 openai-whisper
 gradio
 phonemizer
+pydantic==1.10.4
