@@ -11,7 +11,7 @@ import gradio as gr
 import librosa
 import webbrowser
 
-from text import text_to_sequence, _clean_text
+from text import text_to_sequence, _clean_text, symbols
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 import logging
 logging.getLogger("PIL").setLevel(logging.WARNING)
@@ -25,11 +25,12 @@ language_marks = {
     "日本語": "[JA]",
     "简体中文": "[ZH]",
     "English": "[EN]",
+    "French": "",
     "Mix": "",
 }
-lang = ['日本語', '简体中文', 'English', 'Mix']
+lang = ['French', '日本語', '简体中文', 'English', 'Mix']
 def get_text(text, hps, is_symbol):
-    text_norm = text_to_sequence(text, hps.symbols, [] if is_symbol else hps.data.text_cleaners)
+    text_norm = text_to_sequence(text, symbols, [] if is_symbol else hps.data.text_cleaners)
     if hps.data.add_blank:
         text_norm = commons.intersperse(text_norm, 0)
     text_norm = LongTensor(text_norm)
@@ -94,7 +95,7 @@ if __name__ == "__main__":
 
 
     net_g = SynthesizerTrn(
-        len(hps.symbols),
+        len(symbols),
         hps.data.filter_length // 2 + 1,
         hps.train.segment_size // hps.data.hop_length,
         n_speakers=hps.data.n_speakers,
@@ -113,7 +114,7 @@ if __name__ == "__main__":
                 with gr.Column():
                     textbox = gr.TextArea(label="Text",
                                           placeholder="Type your sentence here",
-                                          value="こんにちわ。", elem_id=f"tts-input")
+                                          value="Bonjour Monsieur", elem_id=f"tts-input")
                     # select character
                     char_dropdown = gr.Dropdown(choices=speakers, value=speakers[0], label='character')
                     language_dropdown = gr.Dropdown(choices=lang, value=lang[0], label='language')

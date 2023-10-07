@@ -10,24 +10,14 @@ parent_dir = "./denoised_audio/"
 filelist = list(os.walk(parent_dir))[0][2]
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--languages", default="CJE")
-    parser.add_argument("--whisper_size", default="medium")
+    parser.add_argument("--languages", default="FR")
+    parser.add_argument("--whisper_size", default="small")
     args = parser.parse_args()
-    if args.languages == "CJE":
+    if args.languages == "FR":
         lang2token = {
-            'zh': "[ZH]",
-            'ja': "[JA]",
-            "en": "[EN]",
+            "fr": "[FR]"
         }
-    elif args.languages == "CJ":
-        lang2token = {
-            'zh': "[ZH]",
-            'ja': "[JA]",
-        }
-    elif args.languages == "C":
-        lang2token = {
-            'zh': "[ZH]",
-        }
+        
     assert(torch.cuda.is_available()), "Please enable GPU in order to run Whisper!"
     with open("./configs/finetune_speaker.json", 'r', encoding='utf-8') as f:
         hps = json.load(f)

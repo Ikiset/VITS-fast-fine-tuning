@@ -21,6 +21,7 @@ logging.getLogger('numba').setLevel(logging.WARNING)
 
 import commons
 import utils
+from text import symbols
 from data_utils import (
   TextAudioSpeakerLoader,
   TextAudioSpeakerCollate,
@@ -57,7 +58,6 @@ def main():
 
 def run(rank, n_gpus, hps):
   global global_step
-  symbols = hps['symbols']
   if rank == 0:
     logger = utils.get_logger(hps.model_dir)
     logger.info(hps)

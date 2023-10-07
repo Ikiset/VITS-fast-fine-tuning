@@ -7,7 +7,7 @@ sys.setrecursionlimit(500000)  # Fix the error message of RecursionError: maximu
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--add_auxiliary_data", type=bool, help="Whether to add extra data as fine-tuning helper")
-    parser.add_argument("--languages", default="CJE")
+    parser.add_argument("--languages", default="FR")
     args = parser.parse_args()
     if args.languages == "CJE":
         langs = ["[ZH]", "[JA]", "[EN]"]
@@ -15,6 +15,8 @@ if __name__ == "__main__":
         langs = ["[ZH]", "[JA]"]
     elif args.languages == "C":
         langs = ["[ZH]"]
+    elif args.languages == "FR":
+        langs = ["[FR]"]
     new_annos = []
     # Source 1: transcribed short audios
     if os.path.exists("short_character_anno.txt"):
@@ -110,7 +112,7 @@ if __name__ == "__main__":
     else:
         # Do not add extra helper data
         # STEP 1: modify config file
-        with open("./configs/finetune_speaker.json", 'r', encoding='utf-8') as f:
+        with open("./configs/modified_finetune_speaker.json", 'r', encoding='utf-8') as f:
             hps = json.load(f)
 
         # assign ids to new speakers
@@ -138,7 +140,7 @@ if __name__ == "__main__":
             path, speaker, txt = line.split("|")
             if len(txt) > 150:
                 continue
-            cleaned_text = text._clean_text(txt, hps['data']['text_cleaners']).replace("[ZH]", "")
+            cleaned_text = text._clean_text(txt.replace("[FR]", ""), hps['data']['text_cleaners'])
             cleaned_text += "\n" if not cleaned_text.endswith("\n") else ""
             cleaned_new_annos.append(path + "|" + str(speaker2id[speaker]) + "|" + cleaned_text)
 
