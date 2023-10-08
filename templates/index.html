@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+   <head>
+      <style>
+         .button-wrapper {
+            max-width: 400px;
+            margin: 0 auto;
+            text-align: center;
+            display: block;
+            margin: 10px 0;
+         }
+
+         .hidden {
+            display: none;
+         }
+      </style>
+   </head>
+   <body>
+      <h1>Bienvenue sur la page d'accueil</h1>
+      <div id="files"></div>
+      <div id="button-wrapper">
+         <button id="refresh">Rafraichir la liste</button>
+         <button id="remove_file">Retirer tous les fichiers</button>
+      </div>
+      <br><br>
+      <div id="button-wrapper">
+         <button id="upload-field">Uploader un fichier</button>
+         <button id="preprocess-field">Préparation d'entraînement</button>
+      </div>
+      <br>
+      <div id="upload-view" class="hidden">
+         <h2>Chargé les fichiers</h1>
+         <input type="file" id="fileInput" /> <!-- accept=".zip" -->
+         <button id="upload-file-button">Envoyer</button>
+         <div id="result"></div>
+      </div>
+      <div id="preprocess-view" class="hidden">
+         <h2>Avancement du Traitement</h1>
+         <div id="progress"></div>
+         <br>
+         <button id="start-preprocess-button">Commencer</button>
+         <button id="stop-preprocess-button" class="hidden">Annuler</button>
+      </div>
+      <script src="/static/js/main.js"></script>
+   </body>
+</html>
