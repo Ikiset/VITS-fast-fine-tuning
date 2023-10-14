@@ -18,14 +18,11 @@ def text_to_sequence(text, symbols, cleaner_names):
   '''
   sequence = []
   clean_text = _clean_text(text, cleaner_names)
-  print(clean_text)
-  print(f" length:{len(clean_text)}")
   for symbol in clean_text:
     if symbol not in _symbol_to_id.keys():
       continue
     symbol_id = _symbol_to_id[symbol]
     sequence += [symbol_id]
-  print(f" length:{len(sequence)}")
   return sequence
 
 

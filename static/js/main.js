@@ -4,13 +4,17 @@ document.addEventListener("DOMContentLoaded", function () {
   const preprocessButton = document.getElementById("preprocess-field");
   const preprocessStart = document.getElementById("start-preprocess-button");
   const preprocessStop = document.getElementById("stop-preprocess-button");
+  const trainStart = document.getElementById("start-train-button");
+  const trainStop = document.getElementById("stop-train-button");
 
   // div
   const progressDiv = document.getElementById("progress");
+  const trainProgressDiv = document.getElementById("train-progress");
   const uploadView = document.getElementById("upload-view");
   const preprocessView = document.getElementById("preprocess-view");
 
   let progressInterval;
+  let trainProgressInterval;
 
   fetchGetUploadedFiles();
 
@@ -42,6 +46,27 @@ document.addEventListener("DOMContentLoaded", function () {
     preprocessStart.classList.remove("hidden");
     preprocessStop.classList.add("hidden");
     fetchStopPreprocessing();
+    clearInterval(progressInterval);
+  });
+
+  trainStart.addEventListener("click", function () {
+    trainStop.classList.remove("hidden");
+    trainStart.classList.add("hidden");
+    fetch("/train/run")
+      .then(() => {
+        console.log("train run is activate");
+      })
+      .catch((error) => {
+        console.error("Erreur lors de l'entrainement : ", error);
+      });
+    trainProgressInterval = setInterval(fetchTrainProgress, 1000);
+  });
+
+  trainStop.addEventListener("click", function () {
+    trainStart.classList.remove("hidden");
+    trainStop.classList.add("hidden");
+    fetchStopTrain();
+    clearInterval(trainProgressInterval);
   });
 
   function fetchProgress() {
@@ -79,6 +104,34 @@ document.addEventListener("DOMContentLoaded", function () {
         console.error("Erreur lors de l'arrêt du traitement :", error);
       });
   }
+
+  function fetchTrainProgress() {
+    fetch("/train/start")
+      .then((response) => response.json())
+      .then((data) => {
+        const epoch = data.epoch;
+        const status = data.status;
+        const max_epoch = data.max_epochs;
+        if (status === "ended") {
+          trainStart.classList.remove("hidden");
+          trainStop.classList.add("hidden");
+          trainProgressDiv.textContent = `Entrainement terminer : ${epoch}`;
+          clearInterval(trainProgressInterval);
+        } else {
+          trainProgressDiv.textContent = `Avancement : ${epoch}/${max_epoch}`;
+        }
+      });
+  }
+
+  function fetchStopTrain() {
+    fetch("/train/stop")
+      .then((response) => response.json())
+      .then((data) => {
+        const epoch = data.epoch;
+        const status = data.status;
+        trainProgressDiv.textContent = `Entrainement terminer : ${epoch}\t${status}`;
+      });
+  }
 });
 
 document.getElementById("refresh").addEventListener("click", function () {
@@ -107,7 +160,7 @@ function fetchGetUploadedFiles() {
       const fileList = data.files;
 
       if (fileList.length === 0) {
-        filesDiv.textContent = "Veuiller chargé un zip";
+        filesDiv.textContent = "Veuillez chargé un zip";
       } else {
         const filesListHTML = fileList
           .map((fileName) => `<p>${fileName}</p>`)
@@ -148,9 +201,9 @@ function fetchUploadFile() {
     method: "POST",
     body: formData,
   })
-    .then((response) => response.text())
-    .then(() => {
-      resultDiv.textContent = "File successfully loaded";
+    .then((response) => response.json())
+    .then((data) => {
+      resultDiv.textContent = data.message;
 
       const newFileInput = document.createElement("input");
       newFileInput.type = "file";
@@ -161,5 +214,6 @@ function fetchUploadFile() {
     })
     .catch((error) => {
       resultDiv.textContent = "Erreur lors du téléchargement du fichier";
+      console.log(error);
     });
 }
