@@ -10,5 +10,6 @@ torchvision
 torchaudio
 unidecode
 openai-whisper
+gradio
 phonemizer==2.2.1
 pydantic==1.10.4
