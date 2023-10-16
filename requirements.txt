@@ -1,7 +1,6 @@
 Cython
 librosa==0.9.2
 matplotlib==3.3.1
-moviepy
 imageio==2.4.1
 scipy
 numpy
@@ -11,6 +10,5 @@ torchvision
 torchaudio
 unidecode
 openai-whisper
-gradio
 phonemizer==2.2.1
 pydantic==1.10.4

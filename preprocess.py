@@ -2,20 +2,23 @@ import os
 import argparse
 import json
 import sys
-sys.setrecursionlimit(500000)  # Fix the error message of RecursionError: maximum recursion depth exceeded while calling a Python object.  You can change the number as you want.
+# Fix the error message of RecursionError: maximum recursion depth exceeded while calling a Python object.  You can change the number as you want.
+sys.setrecursionlimit(500000)
 
-def preprocess(add_auxiliary_data:bool):
+
+def preprocess(add_auxiliary_data: bool):
     langs = ["FR"]
     if os.path.exists("short_character_anno.txt"):
         with open("short_character_anno.txt", 'r', encoding='utf-8') as f:
             short_character_anno = f.readlines()
     new_annos = [line for line in short_character_anno]
     speakers = []
-    for line in new_annos :
+    for line in new_annos:
         path, speaker, text = line.split("|")
         if speaker not in speakers:
             speakers.append(speaker)
-    assert (len(speakers) != 0), "No audio file found. Please check your uploaded file structure."
+    assert (len(speakers) !=
+            0), "No audio file found. Please check your uploaded file structure."
     # STEP 1 : modify config file
     with open("./configs/finetune_speaker.json", 'r', encoding='utf-8') as f:
         hps = json.load(f)
@@ -42,18 +45,20 @@ def preprocess(add_auxiliary_data:bool):
         path, speaker, txt = line.split("|")
         if len(txt) > 150:
             continue
-        cleaned_text = text._clean_text(txt.replace("[FR]", ""), hps['data']['text_cleaners'])
+        cleaned_text = text._clean_text(txt.replace(
+            "[FR]", ""), hps['data']['text_cleaners'])
         cleaned_text += "\n" if not cleaned_text.endswith("\n") else ""
-        cleaned_new_annos.append(path + "|" + str(speaker2id[speaker]) + "|" + cleaned_text)
+        cleaned_new_annos.append(
+            path + "|" + str(speaker2id[speaker]) + "|" + cleaned_text)
 
     final_annos = cleaned_new_annos
-    
+
     if add_auxiliary_data:
         with open("./SIWIS.txt", 'r', encoding='utf-8') as f:
             old_annos = f.readlines()
         filtered_old_annos = [line for line in old_annos]
         old_annos = filtered_old_annos
-        speakers.insert(0, "SIWIS")
+        speakers.append("SIWIS")
         num_old_voices = len(old_annos)
         num_new_voices = len(new_annos)
         # balance number of new & old voices
@@ -65,7 +70,7 @@ def preprocess(add_auxiliary_data:bool):
 
         hps['data']["n_speakers"] = len(speakers)
         hps['speakers'] = speaker2id
-        
+
         import text
         cleaned_old_annos = []
         for i, line in enumerate(old_annos):
@@ -74,7 +79,8 @@ def preprocess(add_auxiliary_data:bool):
                 continue
             cleaned_text = text._clean_text(txt, hps['data']['text_cleaners'])
             cleaned_text += "\n" if not cleaned_text.endswith("\n") else ""
-            cleaned_old_annos.append(path + "|" + str(speaker2id["SIWIS"]) + "|" + cleaned_text)
+            cleaned_old_annos.append(
+                path + "|" + str(speaker2id["SIWIS"]) + "|" + cleaned_text)
         # merge with old annotation
         final_annos = cleaned_old_annos + cc_duplicate * final_annos
 
@@ -90,9 +96,11 @@ def preprocess(add_auxiliary_data:bool):
         for line in cleaned_new_annos:
             f.write(line)
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--add_auxiliary_data", type=bool, help="Whether to add extra data as fine-tuning helper")
+    parser.add_argument("--add_auxiliary_data", type=bool,
+                        help="Whether to add extra data as fine-tuning helper")
     parser.add_argument("--languages", default="FR")
     args = parser.parse_args()
     if args.languages == "FR":
@@ -115,7 +123,8 @@ if __name__ == "__main__":
         path, speaker, text = line.split("|")
         if speaker not in speakers:
             speakers.append(speaker)
-    assert (len(speakers) != 0), "No audio file found. Please check your uploaded file structure."
+    assert (len(speakers) !=
+            0), "No audio file found. Please check your uploaded file structure."
     # Source 3 (Optional): sampled audios as extra training helpers
     # STEP 1: modify config file
     with open("./configs/finetune_speaker.json", 'r', encoding='utf-8') as f:
@@ -142,12 +151,14 @@ if __name__ == "__main__":
         path, speaker, txt = line.split("|")
         if len(txt) > 150:
             continue
-        cleaned_text = text._clean_text(txt.replace("[FR]", ""), hps['data']['text_cleaners'])
+        cleaned_text = text._clean_text(txt.replace(
+            "[FR]", ""), hps['data']['text_cleaners'])
         cleaned_text += "\n" if not cleaned_text.endswith("\n") else ""
-        cleaned_new_annos.append(path + "|" + str(speaker2id[speaker]) + "|" + cleaned_text)
+        cleaned_new_annos.append(
+            path + "|" + str(speaker2id[speaker]) + "|" + cleaned_text)
 
     final_annos = cleaned_new_annos
-    
+
     if args.add_auxiliary_data:
         with open("./SIWIS.txt", 'r', encoding='utf-8') as f:
             old_annos = f.readlines()
@@ -158,7 +169,7 @@ if __name__ == "__main__":
         for line in old_annos:
             path, text = line.split("|")
             if "SIWIS" not in speakers:
-                speakers.insert(0, "SIWIS")
+                speakers.append("SIWIS")
         num_old_voices = len(old_annos)
         num_new_voices = len(new_annos)
         # STEP 1: balance number of new & old voices
@@ -172,7 +183,7 @@ if __name__ == "__main__":
         hps['data']["n_speakers"] = len(speakers)
         # overwrite speaker names
         hps['speakers'] = speaker2id
-        
+
         # STEP 3: clean annotations, replace speaker names with assigned speaker IDs
         import text
         cleaned_old_annos = []
@@ -182,10 +193,11 @@ if __name__ == "__main__":
                 continue
             cleaned_text = text._clean_text(txt, hps['data']['text_cleaners'])
             cleaned_text += "\n" if not cleaned_text.endswith("\n") else ""
-            cleaned_old_annos.append(path + "|" + str(speaker2id["SIWIS"]) + "|" + cleaned_text)
+            cleaned_old_annos.append(
+                path + "|" + str(speaker2id["SIWIS"]) + "|" + cleaned_text)
         # merge with old annotation
         final_annos = cleaned_old_annos + cc_duplicate * final_annos
-        
+
     # save modified config
     with open("./configs/finetune_speaker.json", 'w', encoding='utf-8') as f:
         json.dump(hps, f, indent=2)

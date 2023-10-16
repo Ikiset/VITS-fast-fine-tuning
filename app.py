@@ -3,7 +3,7 @@ import time  # Temporaire
 import shutil
 from flask import Flask, render_template, request, jsonify, session, send_from_directory, send_file
 from werkzeug.utils import secure_filename
-
+from train_utils import global_step, global_stop
 import torch
 from torch import no_grad, LongTensor
 from models import SynthesizerTrn
@@ -19,8 +19,8 @@ app.secret_key = 'azerty'
 UPLOAD_FOLDER = './custom_character_voice/'
 UPLOAD_MODEL = './pretrained_models/'
 
-global_stop = False
-i = 0
+# global_stop = False
+# i = 0
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 hps = utils.get_hparams_from_file("configs/finetune_speaker.json")
@@ -35,7 +35,8 @@ _ = model.eval()
 model_dir = 'OUTPUT_MODELS/G_latest.pth'
 if not os.path.exists(model_dir):
     model_dir = ''
-    _ = utils.load_checkpoint('pretrained_models/G_0.pth', model, None)
+    if os.path.exists('pretrained_models/G_0.pth'):
+        _ = utils.load_checkpoint('pretrained_models/G_0.pth', model, None)
 else:
     _ = utils.load_checkpoint(model_dir, model, None)
 
@@ -92,6 +93,17 @@ def processing_short_audio():
 
 @app.route('/preprocess')
 def preprocess_page():
+    import zipfile
+    for filename in os.listdir(UPLOAD_FOLDER):
+        if filename.endswith('.zip'):
+            zip_file = os.path.join(UPLOAD_FOLDER, filename)
+            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                zip_ref.extractall(UPLOAD_FOLDER)
+            os.remove(zip_file)
+            macosx_file = os.path.join(UPLOAD_FOLDER, '__MACOSX')
+            if os.path.exists(macosx_file):
+                shutil.rmtree(macosx_file)
+
     session.pop('progress', None)
     if session['stop_processing'] == True:
         session['stop_processing'] = False
@@ -130,7 +142,6 @@ def start_training():
     global_stop = False
     epoch_progress_generator = get_epoch()
     tmp_epoch = None
-    print((124, hps.train.epochs))
     try:
         epoch = next(epoch_progress_generator)
         tmp_epoch = epoch
@@ -141,21 +152,24 @@ def start_training():
 
 def get_epoch():
     global global_stop
-    global i
+    # global i
+    global global_step
     while not global_stop:
-        yield i
+        yield global_step
 
 
 @app.route('/train/run')
 def train():
-    global i
-    i = 0
-    while(True):
-        i += 1
-        time.sleep(3)
-        global global_stop
-        if global_stop:
-            exit()
+    # global i
+    # i = 0
+    # while(True):
+    #     i += 1
+    #     time.sleep(3)
+    #     global global_stop
+    #     if global_stop:
+    #         exit()
+    import train_utils
+    train_utils.train()
 
 
 @app.route('/train/stop')

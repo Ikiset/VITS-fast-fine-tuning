@@ -41,7 +41,9 @@ preprocessStart.addEventListener("click", function () {
     .catch((error) => {
       console.error("Erreur lors de la récupération de l'avancement :", error);
     });
-  progressInterval = setInterval(fetchProgress, 1000);
+  setTimeout(function () {
+    progressInterval = setInterval(fetchProgress, 1000);
+  }, 1000);
 });
 
 preprocessStop.addEventListener("click", function () {
@@ -57,7 +59,9 @@ trainStart.addEventListener("click", function () {
   fetch("/train/run").catch((error) => {
     console.error("Erreur lors de l'entrainement : ", error);
   });
-  trainProgressInterval = setInterval(fetchTrainProgress, 1000);
+  setTimeout(function () {
+    trainProgressInterval = setInterval(fetchTrainProgress, 1000);
+  }, 1000);
 });
 
 trainStop.addEventListener("click", function () {
@@ -73,14 +77,16 @@ refresh.addEventListener("click", function () {
 
 removeFileButton.addEventListener("click", function () {
   fetchRemoveFile();
-  fetchGetUploadedFiles();
+  setTimeout(function () {
+    fetchGetUploadedFiles();
+  }, 1000);
 });
 
 uploadFileButton.addEventListener("click", function () {
   fetchUploadFile();
   setTimeout(function () {
     fetchGetUploadedFiles();
-  }, 1000);
+  }, 1500);
 });
 
 function fetchProgress() {

@@ -16,7 +16,6 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging
 
 
-
 def load_checkpoint(checkpoint_path, model, optimizer=None, drop_speaker_emb=False):
     assert os.path.isfile(checkpoint_path)
     checkpoint_dict = torch.load(checkpoint_path, map_location='cpu')
@@ -85,7 +84,7 @@ def latest_checkpoint_path(dir_path, regex="G_[0-9]*.pth"):
     f_list = glob.glob(os.path.join(dir_path, regex))
     f_list.sort(key=lambda f: extract_digits(f))
     x = f_list[-1]
-    print(f"latest_checkpoint_path:{x}")
+    print(f'latest_checkpoint_path:{x}')
     return x
 
 
@@ -182,14 +181,14 @@ def get_hparams(init=True):
                         help='JSON file for configuration')
     parser.add_argument('-m', '--model', type=str, default="pretrained_models",
                         help='Model name')
-    parser.add_argument('-n', '--max_epochs', type=int, default=50,
-                        help='finetune epochs')
-    parser.add_argument('--cont', type=str2bool, default=False, help='whether to continue training on the latest checkpoint')
-    parser.add_argument('--drop_speaker_embed', type=str2bool, default=False, help='whether to drop existing characters')
+    parser.add_argument('--cont', type=str2bool, default=False,
+                        help='whether to continue training on the latest checkpoint')
+    parser.add_argument('--drop_speaker_embed', type=str2bool,
+                        default=False, help='whether to drop existing characters')
     parser.add_argument('--train_with_pretrained_model', type=str2bool, default=True,
                         help='whether to train with pretrained model')
-    parser.add_argument('--preserved', type=int, default=4,
-                        help='Number of preserved models')
+    # parser.add_argument('--preserved', type=int, default=4,
+    #                     help='Number of preserved models')
 
     args = parser.parse_args()
     model_dir = os.path.join("./", args.model)
@@ -211,11 +210,11 @@ def get_hparams(init=True):
 
     hparams = HParams(**config)
     hparams.model_dir = model_dir
-    hparams.max_epochs = args.max_epochs
+    # hparams.max_epochs = args.max_epochs
     hparams.cont = args.cont
     hparams.drop_speaker_embed = args.drop_speaker_embed
     hparams.train_with_pretrained_model = args.train_with_pretrained_model
-    hparams.preserved = args.preserved
+    # hparams.preserved = args.preserved
     return hparams
 
 
@@ -264,7 +263,8 @@ def get_logger(model_dir, filename="train.log"):
     logger = logging.getLogger(os.path.basename(model_dir))
     logger.setLevel(logging.DEBUG)
 
-    formatter = logging.Formatter("%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s")
+    formatter = logging.Formatter(
+        "%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s")
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
     h = logging.FileHandler(os.path.join(model_dir, filename))

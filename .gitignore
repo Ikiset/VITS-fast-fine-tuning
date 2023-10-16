@@ -2,3 +2,11 @@ output.wav
 custom_character_voice/*
 pretrained_models/*
 OUTPUT_MODELS/*
+.idea/
+.DS_Store
+.empty
+__pycache/
+video_data
+raw_audio
+segmented_character_voice
+denoised_audio
