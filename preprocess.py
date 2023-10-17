@@ -72,13 +72,13 @@ def preprocess(add_auxiliary_data: bool):
         import text
         cleaned_old_annos = []
         for i, line in enumerate(old_annos):
-            path, txt = line.split("|")
+            path, speaker, txt = line.split("|")
             if len(txt) > 150:
                 continue
             cleaned_text = text._clean_text(txt, hps['data']['text_cleaners'])
             cleaned_text += "\n" if not cleaned_text.endswith("\n") else ""
             cleaned_old_annos.append(
-                path + "|" + str(speaker2id["SIWIS"]) + "|" + cleaned_text)
+                path + "|" + str(speaker2id[speaker]) + "|" + cleaned_text)
         # merge with old annotation
         final_annos = cleaned_old_annos + cc_duplicate * final_annos
 

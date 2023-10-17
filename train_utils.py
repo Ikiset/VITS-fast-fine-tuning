@@ -43,16 +43,21 @@ def train(cont=False, model="G_0.pth"):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '8000'
 
-    hps = utils.get_hparams()
-    mp.spawn(run, nprocs=n_gpus, args=(
-        n_gpus, hps, "pretrained_models", model, cont))
+    hps = utils.get_hparams_from_file("./configs/finetune_speaker.json")
+    for gpu_id in range(n_gpus):
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+        run(gpu_id, n_gpus, hps, model, cont)
 
 
-def run(rank, n_gpus, hps, model_dir, model, cont):
+def run(rank, n_gpus, hps, model, cont):
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(rank)
     global global_step
     if rank == 0:
-        writer = SummaryWriter(log_dir=model_dir)
-        writer_eval = SummaryWriter(log_dir=os.path.join(model_dir, "eval"))
+        logger = utils.get_logger(hps.model_dir)
+        logger.info(hps)
+        writer = SummaryWriter(log_dir=hps.model_dir)
+        writer_eval = SummaryWriter(
+            log_dir=os.path.join(hps.model_dir, "eval"))
 
     dist.init_process_group(
         backend='nccl', init_method='env://', world_size=n_gpus, rank=rank)
@@ -95,22 +100,18 @@ def run(rank, n_gpus, hps, model_dir, model, cont):
             global_step = (epoch_str - 1) * len(train_loader)
         except:
             print("Failed to find latest checkpoint, loading G_0.pth...")
-            if hps.train_with_pretrained_model:
-                print("Train with pretrained model...")
-                _, _, _, epoch_str = utils.load_checkpoint(
-                    "./pretrained_models/G_0.pth", net_g, None)
-                _, _, _, epoch_str = utils.load_checkpoint(
-                    "./pretrained_models/D_0.pth", net_d, None)
-            else:
-                print("Train without pretrained model...")
+            _, _, _, epoch_str = utils.load_checkpoint(
+                "./pretrained_models/G_0.pth", net_g, None)
+            _, _, _, epoch_str = utils.load_checkpoint(
+                "./pretrained_models/D_0.pth", net_d, None)
             epoch_str = 1
             global_step = 0
     else:
         try:
             _, _, _, epoch_str = utils.load_checkpoint(
-                utils.latest_checkpoint_path(model_dir, model), net_g, optim_g)
+                utils.latest_checkpoint_path(hps.model_dir, model), net_g, optim_g)
             _, _, _, epoch_str = utils.load_checkpoint(
-                utils.latest_checkpoint_path(model_dir, "D_*.pth"), net_d, optim_d)
+                utils.latest_checkpoint_path(hps.model_dir, "D_*.pth"), net_d, optim_d)
             global_step = (epoch_str - 1) * len(train_loader)
         except:
             epoch_str = 1
@@ -146,15 +147,16 @@ def run(rank, n_gpus, hps, model_dir, model, cont):
     for epoch in range(epoch_str, hps.train.epochs + 1):
         if rank == 0:
             train_and_evaluate(rank, epoch, hps, [net_g, net_d], [optim_g, optim_d], [
-                               scheduler_g, scheduler_d], scaler, [train_loader, eval_loader], [writer, writer_eval])
+                               scheduler_g, scheduler_d], scaler, [train_loader, eval_loader], logger, [writer, writer_eval])
         else:
             train_and_evaluate(rank, epoch, hps, [net_g, net_d], [optim_g, optim_d], [
-                               scheduler_g, scheduler_d], scaler, [train_loader, None], None)
+                               scheduler_g, scheduler_d], scaler, [train_loader, None], None, None)
         scheduler_g.step()
         scheduler_d.step()
 
 
-def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loaders, writers):
+def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loaders, logger, writers):
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(rank)
     net_g, net_d = nets
     optim_g, optim_d = optims
     scheduler_g, scheduler_d = schedulers
@@ -278,7 +280,10 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
 
         global_step += 1
         if global_stop or global_step >= hps.train.epochs:
-            exit()
+            break
+    if rank == 0:
+        logger.info('====> Epoch: {} \t\t Step : {}'.format(
+            epoch, global_step))
 
 
 def evaluate(hps, generator, eval_loader, writer_eval):

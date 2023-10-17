@@ -5,6 +5,7 @@ from flask import Flask, render_template, request, jsonify, session, send_from_d
 from werkzeug.utils import secure_filename
 from train_utils import global_step, global_stop
 import torch
+import torch.distributed as dist
 from torch import no_grad, LongTensor
 from models import SynthesizerTrn
 from text import symbols, text_to_sequence
@@ -12,6 +13,7 @@ import utils
 import commons
 import numpy as np
 from scipy.io import wavfile
+import whisper
 
 app = Flask(__name__)
 app.secret_key = 'azerty'
@@ -70,9 +72,96 @@ def get_uploaded_files():
 
 
 def processing_short_audio():
-    from scripts.short_audio_transcribe import short_audio_transcribe
+    import torch
     from scripts.resample import run_resample
     from preprocess import preprocess
+
+    assert (torch.cuda.is_available()
+            ), "Please enable GPU in order to run Whisper!"
+    model = whisper.load_model("small")
+
+    def transcribe_one(audio_path):
+        # load audio and pad/trim it to fit 30 seconds
+        audio = whisper.load_audio(audio_path)
+        audio = whisper.pad_or_trim(audio)
+
+        # make log-Mel spectrogram and move to the same device as the model
+        mel = whisper.log_mel_spectrogram(audio).to(model.device)
+
+        # detect the spoken language
+        _, probs = model.detect_language(mel)
+        print(f"Detected language: {max(probs, key=probs.get)}")
+        lang = max(probs, key=probs.get)
+        # decode the audio
+        options = whisper.DecodingOptions(beam_size=5)
+        result = whisper.decode(model, mel, options)
+
+        # print the recognized text
+        print(result.text)
+        return lang, result.text
+
+    def short_audio_load(i, parent_dir, speaker, wavfile, target_sr, to_long_file, to_long_call):
+        import torchaudio
+
+        wav, sr = torchaudio.load(parent_dir + speaker + "/" + wavfile, frame_offset=0, num_frames=-1, normalize=True,
+                                  channels_first=True)
+        wav = wav.mean(dim=0).unsqueeze(0)
+        if sr != target_sr:
+            wav = torchaudio.transforms.Resample(
+                orig_freq=sr, new_freq=target_sr)(wav)
+        if wav.shape[1] / sr > 20:
+            to_long_file.append(wavfile)
+            to_long_call = f"{', '.join(to_long_file)} too long, ignoring\n"
+            return None, to_long_call
+        save_path = parent_dir + speaker + "/" + f"processed_{i}.wav"
+        torchaudio.save(save_path, wav, target_sr, channels_first=True)
+        return save_path, to_long_call
+
+    def short_audio_transcribe():
+        import os
+        import json
+
+        parent_dir = "./custom_character_voice/"
+        speaker_names = list(os.walk(parent_dir))[0][1]
+        speaker_annos = []
+        total_files = sum([len(files) for r, d, files in os.walk(parent_dir)])
+        with open("./configs/finetune_speaker.json", 'r', encoding='utf-8') as f:
+            hps = json.load(f)
+        target_sr = hps['data']['sampling_rate']
+        processed_files = 0
+        to_long_file = []
+        to_long_call = ""
+        lang_error_file = []
+        lang_error_call = ""
+
+        for speaker in speaker_names:
+            for i, wavfile in enumerate(list(os.walk(parent_dir + speaker))[0][2]):
+                # try to load file as audio
+                if wavfile.startswith("processed_"):
+                    continue
+                try:
+                    save_path, to_long_call = short_audio_load(i, parent_dir, speaker, wavfile, target_sr,
+                                                               to_long_file, to_long_call)
+                    if save_path == None:
+                        continue
+                    # transcribe text
+                    lang, text = transcribe_one(save_path)
+                    if lang != 'fr':
+                        lang_error_file.append(wavfile+f"({lang})")
+                        lang_error_call = f"{', '.join(lang_error_file)} : is not french"
+                        continue
+                    text = text + "\n"
+                    speaker_annos.append(
+                        save_path + "|" + speaker + "|" + text)
+
+                    processed_files += 1
+                    yield(processed_files, total_files, to_long_call, lang_error_call)
+                except:
+                    continue
+        with open("short_character_anno.txt", 'w', encoding='utf-8') as f:
+            for line in speaker_annos:
+                f.write(line)
+        yield "finished"
 
     if 'progress' not in session:
         generator_audio_transcribe = short_audio_transcribe()
@@ -103,8 +192,8 @@ def preprocess_page():
             macosx_file = os.path.join(UPLOAD_FOLDER, '__MACOSX')
             if os.path.exists(macosx_file):
                 shutil.rmtree(macosx_file)
-
     session.pop('progress', None)
+    session.pop('stop_processing', None)
     if session['stop_processing'] == True:
         session['stop_processing'] = False
     return jsonify({'message': 'Preprocess starting'})
@@ -151,9 +240,7 @@ def start_training():
 
 
 def get_epoch():
-    global global_stop
-    # global i
-    global global_step
+    from train_utils import global_step, global_stop
     while not global_stop:
         yield global_step
 
@@ -174,19 +261,16 @@ def train():
 
 @app.route('/train/stop')
 def train_stop():
-    global global_stop
-    global i
+    from train_utils import global_step, global_stop
     global_stop = True
-    return jsonify({"epoch": i, "status": "stopped"})
+    if dist.is_initialized():
+        dist.destroy_process_group()
+    return jsonify({"epoch": global_step, "status": "stopped"})
 
 
 @app.route('/train/continu')
 def train_continu():
     pass
-
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'pth'}
 
 
 @app.route('/generate', methods=['GET'])
@@ -210,6 +294,14 @@ def upload_model():
     return jsonify({"message": 'model is successfully uploaded'})
 
 
+@app.route('/generate/model', methods=['POST'])
+def change_model():
+    data = request.get_json()
+    model_name = data.get('model_name')
+    _ = utils.load_checkpoint(UPLOAD_MODEL + model_name, model, None)
+    return jsonify({'message': f'Model is change to {model_name}'})
+
+
 @app.route('/delete_model', methods=['POST'])
 def delete_model():
     data = request.get_json()
@@ -230,6 +322,7 @@ def delete_model():
 def get_models():
     models = [f for f in os.listdir(UPLOAD_MODEL) if os.path.isfile(
         os.path.join(UPLOAD_MODEL, f))]
+    models.remove('D_0.pth')
     if os.path.exists("OUTPUT_MODELS/G_latest.pth"):
         models.insert(0, "your trained model")
     return jsonify({'models': models})

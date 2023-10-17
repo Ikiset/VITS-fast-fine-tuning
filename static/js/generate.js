@@ -65,9 +65,16 @@ document.getElementById("select-model-button").addEventListener("click", () => {
   const modelSelect = document.getElementById("model-select");
   const selectedModel = modelSelect.value;
 
-  // Vous pouvez maintenant utiliser "selectedModel" pour effectuer l'action souhaitée, par exemple, charger ce modèle.
-  // Assurez-vous de gérer cette action côté serveur.
-  alert("Modèle sélectionné : " + selectedModel);
+  fetch("/generate/model", {
+    method: "POST",
+    body: JSON.stringify({ model_name: selectedModel }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+    .then((response) => response.json())
+    .then((data) => alert(data.message))
+    .catch((error) => "Error in selection of model : " + error);
 });
 
 document.getElementById("delete-model-button").addEventListener("click", () => {

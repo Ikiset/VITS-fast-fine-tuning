@@ -229,12 +229,13 @@ def get_hparams_from_dir(model_dir):
     return hparams
 
 
-def get_hparams_from_file(config_path):
+def get_hparams_from_file(config_path, save_dir="OUTPUT_MODEL"):
     with open(config_path, "r", encoding="utf-8") as f:
         data = f.read()
     config = json.loads(data)
 
     hparams = HParams(**config)
+    hparams.model_dir = save_dir
     return hparams
 
 

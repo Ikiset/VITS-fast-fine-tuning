@@ -86,7 +86,7 @@ uploadFileButton.addEventListener("click", function () {
   fetchUploadFile();
   setTimeout(function () {
     fetchGetUploadedFiles();
-  }, 1500);
+  }, 4000);
 });
 
 function fetchProgress() {
@@ -111,6 +111,7 @@ function fetchProgress() {
     })
     .catch((error) => {
       console.error("Erreur lors de la récupération de l'avancement :", error);
+      clearInterval(progressInterval);
     });
 }
 
@@ -137,6 +138,10 @@ function fetchTrainProgress() {
       } else {
         trainProgressDiv.textContent = `Avancement : ${epoch}/${max_epoch}`;
       }
+    })
+    .catch((error) => {
+      console.error("Error in training : " + error);
+      clearInterval(trainProgressInterval);
     });
 }
 
@@ -190,6 +195,9 @@ function fetchUploadFile() {
   const file = fileInput.files[0];
   if (!file) {
     resultDiv.textContent = "Fichier non sélectionné";
+    setTimeout(function () {
+      resultDiv.textContent = "";
+    }, 10000);
     return;
   }
   const formData = new FormData();
@@ -202,13 +210,14 @@ function fetchUploadFile() {
     .then((response) => response.json())
     .then((data) => {
       resultDiv.textContent = data.message;
-
       const newFileInput = document.createElement("input");
       newFileInput.type = "file";
       newFileInput.id = "fileInput";
       //   newFileInput.accept = ".zip";
-
       fileInput.parentNode.replaceChild(newFileInput, fileInput);
+      setTimeout(function () {
+        resultDiv.textContent = "";
+      }, 10000);
     })
     .catch((error) => {
       resultDiv.textContent = "Erreur lors du téléchargement du fichier";
