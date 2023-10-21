@@ -109,10 +109,11 @@ def run(rank, n_gpus, hps, model, cont):
     else:
         try:
             _, _, _, epoch_str = utils.load_checkpoint(
-                utils.latest_checkpoint_path(hps.model_dir, model), net_g, optim_g)
+                "./pretrained_models/G_0.pth", net_g, None)
             _, _, _, epoch_str = utils.load_checkpoint(
-                utils.latest_checkpoint_path(hps.model_dir, "D_*.pth"), net_d, optim_d)
-            global_step = (epoch_str - 1) * len(train_loader)
+                "./pretrained_models/D_0.pth", net_d, None)
+            epoch_str = 1
+            global_step = 0
         except:
             epoch_str = 1
             global_step = 0
@@ -151,6 +152,9 @@ def run(rank, n_gpus, hps, model, cont):
         else:
             train_and_evaluate(rank, epoch, hps, [net_g, net_d], [optim_g, optim_d], [
                                scheduler_g, scheduler_d], scaler, [train_loader, None], None, None)
+        global global_stop
+        if global_stop:
+            break
         scheduler_g.step()
         scheduler_d.step()
 
@@ -164,7 +168,6 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
     if writers is not None:
         writer, writer_eval = writers
 
-    global global_step
     global global_step
 
     net_g.train()
@@ -279,11 +282,12 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
                                       os.path.join(hps.model_dir, "D_latest.pth"))
 
         global_step += 1
+        global global_stop
         if global_stop or global_step >= hps.train.epochs:
             break
     if rank == 0:
-        logger.info('====> Epoch: {} \t\t Step : {}'.format(
-            epoch, global_step))
+        logger.info('====> Epoch: {} \t\t Step : {} \t\t Global_stop : {}'.format(
+            epoch, global_step, global_stop))
 
 
 def evaluate(hps, generator, eval_loader, writer_eval):

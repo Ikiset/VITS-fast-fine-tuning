@@ -10,3 +10,4 @@ video_data
 raw_audio
 segmented_character_voice
 denoised_audio
+__pycache__

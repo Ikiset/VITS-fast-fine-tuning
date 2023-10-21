@@ -73,7 +73,7 @@ document.getElementById("select-model-button").addEventListener("click", () => {
     },
   })
     .then((response) => response.json())
-    .then((data) => alert(data.message))
+    .then((data) => alert(data.message + " " + selectedModel))
     .catch((error) => "Error in selection of model : " + error);
 });
 

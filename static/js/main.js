@@ -12,7 +12,7 @@ const trainStop = document.getElementById("stop-train-button");
 const refresh = document.getElementById("refresh");
 const removeFileButton = document.getElementById("remove_file");
 const uploadFileButton = document.getElementById("upload-file-button");
-
+const continuTrain = document.getElementById("continu-train-button");
 // div
 const progressDiv = document.getElementById("progress");
 const trainProgressDiv = document.getElementById("train-progress");
@@ -38,12 +38,28 @@ preprocessStart.addEventListener("click", function () {
   preprocessStart.classList.add("hidden");
   fetch("/preprocess")
     .then((response) => response.json())
+    .then((data) => {
+      const progress = data.message;
+      if (progress === "ended") {
+        preprocessStart.classList.remove("hidden");
+        preprocessStop.classList.add("hidden");
+
+        progressDiv.textContent =
+          progressDiv.textContent + "\tTraitement terminé";
+        clearInterval(progressInterval);
+      } else if (progress === "stopped") {
+        progressDiv.textContent =
+          progressDiv.textContent + "\tpreprocess are stopped";
+        clearInterval(progressInterval);
+      }
+    })
     .catch((error) => {
+      progressDiv.textContent = "Traitement échouer";
       console.error("Erreur lors de la récupération de l'avancement :", error);
     });
   setTimeout(function () {
     progressInterval = setInterval(fetchProgress, 1000);
-  }, 1000);
+  }, 5000);
 });
 
 preprocessStop.addEventListener("click", function () {
@@ -56,7 +72,22 @@ preprocessStop.addEventListener("click", function () {
 trainStart.addEventListener("click", function () {
   trainStop.classList.remove("hidden");
   trainStart.classList.add("hidden");
+  continuTrain.classList.add("hidden");
   fetch("/train/run").catch((error) => {
+    trainProgressDiv.textContent = "Erreur d'appel pour lancer l'entrainement";
+    console.error("Erreur lors de l'entrainement : ", error);
+  });
+  setTimeout(function () {
+    trainProgressInterval = setInterval(fetchTrainProgress, 1000);
+  }, 1000);
+});
+
+continuTrain.addEventListener("click", function () {
+  trainStop.classList.remove("hidden");
+  trainStart.classList.add("hidden");
+  continuTrain.classList.add("hidden");
+  fetch("/train/continu").catch((error) => {
+    trainProgressDiv.textContent = "Erreur d'appel pour lancer l'entrainement";
     console.error("Erreur lors de l'entrainement : ", error);
   });
   setTimeout(function () {
@@ -66,6 +97,7 @@ trainStart.addEventListener("click", function () {
 
 trainStop.addEventListener("click", function () {
   trainStart.classList.remove("hidden");
+  continuTrain.classList.remove("hidden");
   trainStop.classList.add("hidden");
   fetchStopTrain();
   clearInterval(trainProgressInterval);
@@ -94,20 +126,7 @@ function fetchProgress() {
     .then((response) => response.json())
     .then((data) => {
       const progress = data.progress;
-
-      if (progress === "ended") {
-        preprocessStart.classList.remove("hidden");
-        preprocessStop.classList.add("hidden");
-
-        progressDiv.textContent = "Traitement terminé";
-        clearInterval(progressInterval);
-      } else if (progress === "stopped") {
-        progressDiv.textContent =
-          progressDiv.textContent + "\t preprocess are stopped";
-        clearInterval(progressInterval);
-      } else {
-        progressDiv.textContent = `Avancement : ${progress}`;
-      }
+      progressDiv.textContent = `Avancement : ${progress}`;
     })
     .catch((error) => {
       console.error("Erreur lors de la récupération de l'avancement :", error);
@@ -124,7 +143,7 @@ function fetchStopPreprocessing() {
 }
 
 function fetchTrainProgress() {
-  fetch("/train/start")
+  fetch("/train/progress")
     .then((response) => response.json())
     .then((data) => {
       const epoch = data.epoch;
@@ -132,6 +151,7 @@ function fetchTrainProgress() {
       const max_epoch = data.max_epochs;
       if (status === "ended") {
         trainStart.classList.remove("hidden");
+        continuTrain.classList.remove("hidden");
         trainStop.classList.add("hidden");
         trainProgressDiv.textContent = `Entrainement terminer : ${epoch} epoch(s)`;
         clearInterval(trainProgressInterval);
